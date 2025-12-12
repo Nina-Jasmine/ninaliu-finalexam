@@ -1,0 +1,43 @@
+const express = require('express');
+const router = express.Router();
+const Restaurant = require('../../../models/restaurant');
+
+// GET /api/restaurants (paginated)
+router.get('/', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const total = await Restaurant.countDocuments();
+    const data = await Restaurant.find().skip(skip).limit(limit);
+
+    res.json({ page, limit, total, pages: Math.ceil(total / limit), data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/restaurants (create)
+router.post('/', async (req, res) => {
+  try {
+    const r = new Restaurant(req.body);
+    const saved = await r.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// DELETE /api/restaurants/:_id
+router.delete('/:_id', async (req, res) => {
+  try {
+    const doc = await Restaurant.findByIdAndDelete(req.params._id);
+    if (!doc) return res.status(404).json({ message: 'Restaurant not found' });
+    res.json({ message: 'Deleted', _id: req.params._id });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+module.exports = router;
