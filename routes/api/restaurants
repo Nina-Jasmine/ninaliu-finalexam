@@ -1,55 +1,71 @@
 const express = require('express');
 const router = express.Router();
 const Restaurant = require('../../models/restaurant');
-
 const basicAuth = require('basic-auth');
 const { BASIC_AUTH_USER, BASIC_AUTH_PASS } = require('../../globals');
 
-// Basic Auth middleware
+// ------------------------
+// Basic Authentication Middleware
+// ------------------------
 function requireAuth(req, res, next) {
   const credentials = basicAuth(req);
   if (!credentials || credentials.name !== BASIC_AUTH_USER || credentials.pass !== BASIC_AUTH_PASS) {
     res.setHeader('WWW-Authenticate', 'Basic realm="example"');
-    return res.status(401).json({ message: 'Access denied' });
+    return res.status(401).json({ message: 'Access denied. Invalid credentials.' });
   }
   next();
 }
 
-// GET /api/restaurants (paginated)
+// ------------------------
+// GET /api/restaurants
+// List restaurants with pagination (default page=1, limit=10)
+// ------------------------
 router.get('/', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const total = await Restaurant.countDocuments();
-    const data = await Restaurant.find().skip(skip).limit(limit);
+    const totalItems = await Restaurant.countDocuments();
+    const restaurants = await Restaurant.find().skip(skip).limit(limit);
 
-    res.json({ page, limit, total, pages: Math.ceil(total / limit), data });
+    res.json({
+      page,
+      limit,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit),
+      restaurants
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: 'Server error: ' + err.message });
   }
 });
 
-// POST /api/restaurants (create)
+// ------------------------
+// POST /api/restaurants
+// Create a new restaurant (requires Basic Auth)
+// ------------------------
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const r = new Restaurant(req.body);
-    const saved = await r.save();
-    res.status(201).json(saved);
+    const restaurant = new Restaurant(req.body);
+    const savedRestaurant = await restaurant.save();
+    res.status(201).json(savedRestaurant);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(400).json({ message: 'Validation error: ' + err.message });
   }
 });
 
+// ------------------------
 // DELETE /api/restaurants/:_id
+// Delete a restaurant by ID (requires Basic Auth)
+// ------------------------
 router.delete('/:_id', requireAuth, async (req, res) => {
   try {
-    const doc = await Restaurant.findByIdAndDelete(req.params._id);
-    if (!doc) return res.status(404).json({ message: 'Restaurant not found' });
-    res.json({ message: 'Deleted', _id: req.params._id });
+    const deleted = await Restaurant.findByIdAndDelete(req.params._id);
+    if (!deleted) return res.status(404).json({ message: 'Restaurant not found' });
+    res.json({ message: 'Restaurant deleted', _id: req.params._id });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: 'Server error: ' + err.message });
   }
 });
 
