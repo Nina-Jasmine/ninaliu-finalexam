@@ -1,6 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const Restaurant = require('../../../models/restaurant');
+const Restaurant = require('../../models/restaurant');
+
+const basicAuth = require('basic-auth');
+const { BASIC_AUTH_USER, BASIC_AUTH_PASS } = require('../../globals');
+
+// Basic Auth middleware
+function requireAuth(req, res, next) {
+  const credentials = basicAuth(req);
+  if (!credentials || credentials.name !== BASIC_AUTH_USER || credentials.pass !== BASIC_AUTH_PASS) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="example"');
+    return res.status(401).json({ message: 'Access denied' });
+  }
+  next();
+}
 
 // GET /api/restaurants (paginated)
 router.get('/', async (req, res) => {
@@ -19,7 +32,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/restaurants (create)
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
     const r = new Restaurant(req.body);
     const saved = await r.save();
@@ -30,7 +43,7 @@ router.post('/', async (req, res) => {
 });
 
 // DELETE /api/restaurants/:_id
-router.delete('/:_id', async (req, res) => {
+router.delete('/:_id', requireAuth, async (req, res) => {
   try {
     const doc = await Restaurant.findByIdAndDelete(req.params._id);
     if (!doc) return res.status(404).json({ message: 'Restaurant not found' });

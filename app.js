@@ -5,8 +5,10 @@ var logger = require('morgan');
 const mongoose = require('mongoose');
 const globals = require('./globals');
 
+
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+const apiRestaurantsRouter = require('./routes/api/restaurants');
 
 var app = express();
 
@@ -19,6 +21,14 @@ mongoose.connect(globals.MONGO_URI)
     process.exit(1);
   });
 
+  // Swagger setup
+
+  const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs');
+
+const swaggerDocument = YAML.load('./swagger.yaml');
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));    
+
  
 app.use(logger('dev'));
 app.use(express.json());
@@ -28,5 +38,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/api/restaurants', apiRestaurantsRouter);
 
 module.exports = app;
